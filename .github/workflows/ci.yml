@@ -19,7 +19,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install scons
-      - run: git clone --depth 1 --branch 4.2-stable https://github.com/godotengine/godot-cpp.git
+      - run: git clone --depth 1 --branch 4.2 https://github.com/godotengine/godot-cpp.git
       - run: scons platform=windows target=${{ matrix.target }} arch=${{ matrix.arch }} -j4
       - uses: actions/upload-artifact@v4
         with:
@@ -37,7 +37,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install scons
-      - run: git clone --depth 1 --branch 4.2-stable https://github.com/godotengine/godot-cpp.git
+      - run: git clone --depth 1 --branch 4.2 https://github.com/godotengine/godot-cpp.git
       - run: scons platform=macos target=${{ matrix.target }} -j4
       - uses: actions/upload-artifact@v4
         with:
@@ -57,7 +57,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install scons
-      - run: git clone --depth 1 --branch 4.2-stable https://github.com/godotengine/godot-cpp.git
+      - run: git clone --depth 1 --branch 4.2 https://github.com/godotengine/godot-cpp.git
       - run: scons platform=linux target=${{ matrix.target }} arch=${{ matrix.arch }} -j4
       - uses: actions/upload-artifact@v4
         with:
@@ -79,7 +79,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: pip install scons
-      - run: git clone --depth 1 --branch 4.2-stable https://github.com/godotengine/godot-cpp.git
+      - run: git clone --depth 1 --branch 4.2 https://github.com/godotengine/godot-cpp.git
       - run: scons platform=android target=${{ matrix.target }} arch=${{ matrix.arch }} -j4
         env:
           ANDROID_NDK_ROOT: ${{ steps.setup-ndk.outputs.ndk-path }}
