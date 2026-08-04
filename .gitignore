@@ -1,0 +1,30 @@
+# Godot
+.import/
+export.cfg
+export_presets.cfg
+
+# Build artifacts
+demo/bin/
+*.o
+*.obj
+*.os
+*.so
+*.dll
+*.dylib
+*.framework
+*.exe
+*.pdb
+
+# IDE
+.vscode/
+.idea/
+*.sln
+*.vcxproj
+*.user
+
+# OS
+.DS_Store
+Thumbs.db
+
+# godot-cpp (auto-cloned)
+godot-cpp/
