@@ -2,7 +2,7 @@
 import os
 import sys
 
-# Check if godot-cpp exists, if not clone it
+# Auto-clone godot-cpp if missing
 if not os.path.exists("godot-cpp"):
     print("godot-cpp not found. Cloning...")
     os.system("git clone --depth 1 --branch 4.2-stable https://github.com/godotengine/godot-cpp.git")
