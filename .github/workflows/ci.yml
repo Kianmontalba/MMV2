@@ -1,0 +1,273 @@
+name: MMV2 GDExtension CI
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'include/**'
+      - 'src/**'
+      - 'godot/**'
+      - 'SConstruct'
+      - 'mmv2.gdextension'
+      - '.github/workflows/**'
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  # ============================================
+  # BUILD - Windows
+  # ============================================
+  build-windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        target: [template_debug, template_release]
+        arch: [x86_32, x86_64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup SCons
+        run: pip install scons
+
+      - name: Cache godot-cpp
+        uses: actions/cache@v4
+        with:
+          path: godot-cpp
+          key: godot-cpp-${{ runner.os }}-${{ hashFiles('godot-cpp/**/*.h') }}
+
+      - name: Build MMV2
+        run: |
+          scons platform=windows target=${{ matrix.target }} arch=${{ matrix.arch }} -j4
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mmv2-windows-${{ matrix.target }}-${{ matrix.arch }}
+          path: demo/bin/*.dll
+
+  # ============================================
+  # BUILD - macOS
+  # ============================================
+  build-macos:
+    runs-on: macos-latest
+    strategy:
+      matrix:
+        target: [template_debug, template_release]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup SCons
+        run: pip install scons
+
+      - name: Cache godot-cpp
+        uses: actions/cache@v4
+        with:
+          path: godot-cpp
+          key: godot-cpp-${{ runner.os }}-${{ hashFiles('godot-cpp/**/*.h') }}
+
+      - name: Build MMV2
+        run: |
+          scons platform=macos target=${{ matrix.target }} -j4
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mmv2-macos-${{ matrix.target }}
+          path: demo/bin/*.framework
+
+  # ============================================
+  # BUILD - Linux
+  # ============================================
+  build-linux:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [template_debug, template_release]
+        arch: [x86_64, arm64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup SCons
+        run: pip install scons
+
+      - name: Cache godot-cpp
+        uses: actions/cache@v4
+        with:
+          path: godot-cpp
+          key: godot-cpp-${{ runner.os }}-${{ hashFiles('godot-cpp/**/*.h') }}
+
+      - name: Build MMV2
+        run: |
+          scons platform=linux target=${{ matrix.target }} arch=${{ matrix.arch }} -j4
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mmv2-linux-${{ matrix.target }}-${{ matrix.arch }}
+          path: demo/bin/*.so
+
+  # ============================================
+  # BUILD - Android
+  # ============================================
+  build-android:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [template_debug, template_release]
+        arch: [arm64, x86_64]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Android NDK
+        uses: nttld/setup-ndk@v1
+        id: setup-ndk
+        with:
+          ndk-version: r26b
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Setup SCons
+        run: pip install scons
+
+      - name: Cache godot-cpp
+        uses: actions/cache@v4
+        with:
+          path: godot-cpp
+          key: godot-cpp-${{ runner.os }}-${{ hashFiles('godot-cpp/**/*.h') }}
+
+      - name: Build MMV2
+        env:
+          ANDROID_NDK_ROOT: ${{ steps.setup-ndk.outputs.ndk-path }}
+        run: |
+          scons platform=android target=${{ matrix.target }} arch=${{ matrix.arch }} -j4
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mmv2-android-${{ matrix.target }}-${{ matrix.arch }}
+          path: demo/bin/*.so
+
+  # ============================================
+  # TEST - Static Analysis
+  # ============================================
+  static-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup cppcheck
+        run: sudo apt-get install -y cppcheck
+
+      - name: Run cppcheck
+        run: |
+          cppcheck --enable=all --std=c++20 \
+            --suppress=missingIncludeSystem \
+            --suppress=unusedFunction \
+            --suppress=unmatchedSuppression \
+            -I include \
+            src/ 2>&1 | tee cppcheck-report.txt
+
+      - name: Upload Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: static-analysis-report
+          path: cppcheck-report.txt
+
+  # ============================================
+  # RELEASE - Create Release Package
+  # ============================================
+  release:
+    needs: [build-windows, build-macos, build-linux, build-android]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download All Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+          merge-multiple: false
+
+      - name: Package Release
+        run: |
+          mkdir -p release/mmv2-gdextension
+          cp -r include release/mmv2-gdextension/
+          cp -r godot release/mmv2-gdextension/
+          cp SConstruct release/mmv2-gdextension/
+          cp mmv2.gdextension release/mmv2-gdextension/
+
+          # Copy all built binaries
+          find release-artifacts -name "*.dll" -exec cp {} release/mmv2-gdextension/ \;
+          find release-artifacts -name "*.so" -exec cp {} release/mmv2-gdextension/ \;
+          find release-artifacts -name "*.framework" -exec cp -r {} release/mmv2-gdextension/ \;
+
+          cd release
+          zip -r mmv2-gdextension-all-platforms.zip mmv2-gdextension
+
+      - name: Upload Release Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: mmv2-gdextension-all-platforms
+          path: release/mmv2-gdextension-all-platforms.zip
+
+      - name: Create GitHub Release
+        if: contains(github.event.head_commit.message, '[release]')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release/mmv2-gdextension-all-platforms.zip
+          tag_name: v${{ github.run_number }}
+          name: MMV2 GDExtension v${{ github.run_number }}
+          body: |
+            Automated release of MMV2 Motion Matching GDExtension.
+
+            ## Platforms
+            - Windows (x86_32, x86_64)
+            - macOS (Universal)
+            - Linux (x86_64, arm64)
+            - Android (arm64, x86_64)
+
+            ## Includes
+            - Pre-built binaries
+            - Header files
+            - Godot wrapper classes
+            - Build configuration
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
