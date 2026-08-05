@@ -73,17 +73,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: nttld/setup-ndk@v1
-        id: setup-ndk
         with:
           ndk-version: r23c
+      - name: Set NDK path
+        run: |
+          NDK_PATH=$(find /usr/local/lib/android/sdk/ndk -maxdepth 1 -type d | grep "23.2" | head -n 1)
+          echo "ANDROID_NDK_ROOT=$NDK_PATH" >> $GITHUB_ENV
+          echo "ANDROID_HOME=/usr/local/lib/android/sdk" >> $GITHUB_ENV
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
       - run: pip install scons
       - run: git clone --depth 1 --branch 4.2 https://github.com/godotengine/godot-cpp.git
       - run: scons platform=android target=${{ matrix.target }} arch=${{ matrix.arch }} -j4
-        env:
-          ANDROID_NDK_ROOT: ${{ steps.setup-ndk.outputs.ndk-path }}
       - uses: actions/upload-artifact@v4
         with:
           name: mmv2-android-${{ matrix.target }}-${{ matrix.arch }}
